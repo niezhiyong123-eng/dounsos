@@ -1,0 +1,33 @@
+import { chromium } from '@playwright/test'
+import { createServer } from 'node:http'
+import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { resolve, extname, sep } from 'node:path'
+import assert from 'node:assert/strict'
+const root=resolve('dist/build/h5'),out=resolve('docs/screenshots')
+await mkdir(out,{recursive:true})
+const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml'}
+const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);const file=resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+sep)){res.writeHead(403).end();return}const body=await readFile(file);res.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream'});res.end(body)}catch{res.writeHead(404).end()}})
+await new Promise(r=>server.listen(4173,'127.0.0.1',r))
+let browser,page
+const checks=[],errors=[]
+try{
+  browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe'})
+  page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1})
+  page.on('pageerror',e=>errors.push(e.message))
+  const shot=async name=>{await page.waitForTimeout(1600);await page.screenshot({path:resolve(out,`${name}.png`),fullPage:true})}
+  const button=text=>page.locator('uni-button').filter({hasText:text}).first()
+  const confirm=async()=>{await page.locator('.uni-modal__btn_primary').click()}
+  const navigate=async route=>{await page.goto(`http://127.0.0.1:4173/#${route}`);await page.reload();await page.waitForTimeout(500)}
+  await navigate('/pages/login/index');await shot('01-login')
+  await page.locator('input').nth(1).fill('Doudou123');await button('登录门店').click();await page.getByText('把日常，打理好。').waitFor();await shot('02-home');checks.push('login and dashboard')
+  for(const width of [320,375,390,430]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,`horizontal overflow at ${width}`)}
+  await page.setViewportSize({width:390,height:844});checks.push('dashboard widths 320/375/390/430')
+  await page.locator('.entry').filter({hasText:'门店订货'}).click();await page.locator('.stepper').first().waitFor();await page.locator('.stepper').first().locator('uni-button').last().click();await shot('03-create-order');await button('保存并核对').click();await button('提交审核').waitFor();await button('提交审核').click();await confirm();await button('模拟审核通过').waitFor();await button('模拟审核通过').click();await confirm();await page.getByText('已审核',{exact:true}).waitFor();checks.push('order create submit approve')
+  await navigate('/pages/orders/index?kind=receipts');await page.locator('.card').filter({hasText:'每日鲜牛奶'}).first().click();await button('确认收货').waitFor();await page.locator('.receive-fields input').first().fill('0');await page.locator('textarea').fill('配送短收，等待核对');await shot('04-receipt');await button('确认收货').click();await confirm();await page.getByText('已收货',{exact:true}).waitFor();checks.push('receipt shortage')
+  await navigate('/pages/orders/index?kind=differences');await page.locator('.card').filter({hasText:'每日鲜牛奶'}).first().click();await page.locator('textarea').fill('配送中心核实短收，安排补货');await button('确认核对').click();await confirm();await page.getByText('已核对',{exact:true}).waitFor();await shot('05-difference');checks.push('difference resolution')
+  await navigate('/pages/detail/index?kind=receipts&id=SH20261008002');await button('申请退货').click();await page.locator('input').first().fill('1');await page.locator('textarea').fill('门店与配送协商退货');await button('保存退货申请').click();await confirm();await button('提交审核').waitFor();await button('提交审核').click();await confirm();await button('模拟审核通过').waitFor();await button('模拟审核通过').click();await confirm();await page.locator('textarea').fill('运单DD100，已交接司机');await shot('06-return');await button('确认退货出库').click();await confirm();await button('模拟退货接收').waitFor();await button('模拟退货接收').click();await confirm();await page.getByText('已完成',{exact:true}).waitFor();checks.push('return create submit approve ship complete')
+  await navigate('/pages/profile/index');await button('退出当前账号').click();await confirm();await button('登录门店').waitFor();checks.push('logout')
+  assert.deepEqual(errors,[])
+  await writeFile(resolve(out,'ui-result.json'),JSON.stringify({checks,pageErrors:errors,note:'H5 browser verification only; WeChat simulator/device validation still required.'},null,2))
+  console.log(JSON.stringify({checks,pageErrors:errors},null,2))
+}catch(e){if(page){await page.screenshot({path:resolve(out,'failure.png'),fullPage:true});console.error(await page.locator('body').innerText())}console.error(e);process.exitCode=1}finally{await browser?.close();await new Promise(r=>server.close(r))}

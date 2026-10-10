@@ -1,0 +1,16 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/home/index",
+    "pages/orders/index",
+    "pages/create/index",
+    "pages/detail/index",
+    "pages/profile/index"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#f5f7f5",
+    "backgroundColor": "#f5f7f5"
+  },
+  "usingComponents": {}
+}

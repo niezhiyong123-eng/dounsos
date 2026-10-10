@@ -1,0 +1,11 @@
+{
+  "pages": [
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录门店" } },
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "豆豆 · 门店工作台", "enablePullDownRefresh": true } },
+    { "path": "pages/orders/index", "style": { "navigationBarTitleText": "业务单据", "enablePullDownRefresh": true } },
+    { "path": "pages/create/index", "style": { "navigationBarTitleText": "新建订货单" } },
+    { "path": "pages/detail/index", "style": { "navigationBarTitleText": "单据详情" } },
+    { "path": "pages/profile/index", "style": { "navigationBarTitleText": "我的门店" } }
+  ],
+  "globalStyle": { "navigationBarTextStyle": "black", "navigationBarBackgroundColor": "#f5f7f5", "backgroundColor": "#f5f7f5" }
+}

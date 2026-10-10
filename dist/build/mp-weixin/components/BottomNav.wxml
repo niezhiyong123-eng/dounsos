@@ -1,0 +1,1 @@
+<view class="bottom-nav"><view wx:for="{{a}}" wx:for-item="item" wx:key="d" class="{{['nav-item', item.e]}}" bindtap="{{item.f}}"><text class="nav-icon">{{item.a}}</text><text>{{item.b}}</text><view wx:if="{{item.c}}" class="nav-dot"/></view></view>

@@ -1,0 +1,1 @@
+<view class="{{['product-mark', e]}}"><image wx:if="{{a}}" src="{{b}}" mode="aspectFit" binderror="{{c}}"/><text wx:else>{{d}}</text></view>

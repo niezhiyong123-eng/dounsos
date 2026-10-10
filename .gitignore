@@ -1,0 +1,14 @@
+node_modules/
+dist/
+!dist/
+dist/*
+!dist/build/
+dist/build/*
+!dist/build/mp-weixin/
+!dist/build/mp-weixin/**
+.env.local
+.env.*.local
+target/
+*.log
+.DS_Store
+project.private.config.json

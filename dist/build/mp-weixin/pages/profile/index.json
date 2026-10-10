@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "我的门店",
+  "usingComponents": {
+    "bottom-nav": "../../components/BottomNav"
+  }
+}

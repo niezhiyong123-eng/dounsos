@@ -1,0 +1,26 @@
+{
+  "name": "豆豆店务",
+  "appid": "",
+  "description": "门店订货、收货、差异和退货协同",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "vueVersion": "3",
+  "uniStatistics": {
+    "enable": false
+  },
+  "mp-weixin": {
+    "appid": "wx915821730b6c8f4f",
+    "setting": {
+      "urlCheck": true,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true
+  },
+  "h5": {
+    "router": {
+      "mode": "hash"
+    }
+  }
+}

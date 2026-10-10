@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "豆豆 · 门店工作台",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "bottom-nav": "../../components/BottomNav"
+  }
+}

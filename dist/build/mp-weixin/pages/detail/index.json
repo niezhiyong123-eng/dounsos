@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "单据详情",
+  "usingComponents": {
+    "product-mark": "../../components/ProductMark"
+  }
+}

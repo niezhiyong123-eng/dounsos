@@ -1,0 +1,11 @@
+<template><view class="page"><text class="eyebrow">MY STORE</text><view class="title">我的门店</view><view class="profile-card"><view class="profile-avatar">豆</view><view><view class="profile-name">{{user.name}}</view><text class="muted">{{user.role}} · {{user.account}}</text></view></view><view class="card"><view class="meta-row"><text class="muted">当前门店</text><text>{{user.storeName}}</text></view><view class="divider"/><view class="meta-row"><text class="muted">门店编码</text><text>{{user.storeId}}</text></view><view class="meta-row"><text class="muted">运行环境</text><text>{{isDemo?'本机演示环境':'CMP5 接入环境'}}</text></view><view class="meta-row"><text class="muted">应用版本</text><text>0.1.0 · 界面体验版</text></view></view><view class="card"><view class="product-name">使用说明</view><view class="hint" style="margin-top:18rpx">1. 从工作台创建订货单，保存后提交审核。<br/>2. 演示审核通过后，在收货列表核对商品。<br/>3. 短收或破损自动形成差异记录。<br/>4. 已收货单可发起退货，审核通过后出库。</view></view><view v-if="isDemo" class="demo-banner">本版本使用本机演示数据。清除微信开发者工具缓存将重置单据。演示账号和审批入口不可用于正式营业。</view><button class="secondary" :loading="busy" :disabled="busy" @tap="logout">退出当前账号</button><BottomNav active="profile"/></view></template>
+<script setup>
+import { computed, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { client, api, guard, confirm, isDemo, storage } from '../../services/api.js'
+import BottomNav from '../../components/BottomNav.vue'
+const user=computed(()=>client.getSession()?.user||{}),busy=ref(false)
+onShow(guard)
+async function logout(){if(busy.value)return;busy.value=true;try{if(!await confirm('确认退出当前账号？本地会话和未提交的订货输入将清除。'))return;storage.remove(`order-draft:${user.value.storeId}`);let message='';try{await api.logout()}catch(e){message='已清除本地登录状态，但服务端退出未确认。'}uni.reLaunch({url:'/pages/login/index'});if(message)uni.showModal({title:'退出提示',content:message,showCancel:false})}finally{busy.value=false}}
+</script>
+<style scoped>.profile-card{display:flex;gap:25rpx;align-items:center;margin:35rpx 0;background:#e8eedf;padding:40rpx 30rpx;border-radius:25rpx}.profile-avatar{width:105rpx;height:105rpx;border-radius:30rpx;background:#316f51;color:white;display:flex;align-items:center;justify-content:center;font-size:50rpx}.profile-name{font-size:35rpx;font-weight:700;margin-bottom:10rpx}</style>

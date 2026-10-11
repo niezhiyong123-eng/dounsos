@@ -2,6 +2,7 @@
   "checks": [
     "login and dashboard",
     "dashboard widths 320/375/390/430",
+    "four independent document modules without tabs",
     "order create submit approve",
     "receipt shortage",
     "difference resolution",

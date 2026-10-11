@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "单据列表",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "product-mark": "../../components/ProductMark"
+  }
+}

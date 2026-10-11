@@ -20,7 +20,7 @@ import BottomNav from '../../components/BottomNav.vue'
 const stats = ref({ pending: 0, differences: 0, orders: 0, returns: 0 }), pending = ref([]), loading = ref(false), error = ref('')
 const user = computed(() => client.getSession()?.user || {}), today = `${new Date().getMonth()+1}月${new Date().getDate()}日`
 const entries = [{ kind: 'create', title: '门店订货', desc: '选好商品，及时补货', icon: '＋', color: 'mint' }, { kind: 'receipts', title: '收货确认', desc: '逐项核对，安心入库', icon: '↓', color: 'blue' }, { kind: 'differences', title: '差异核对', desc: '有差必查，有据可依', icon: '≠', color: 'sand' }, { kind: 'returns', title: '退货申请', desc: '规范退货，全程跟踪', icon: '↗', color: 'rose' }]
-const open = kind => go(`/pages/orders/index?kind=${kind}`)
+const open = kind => go(`/pages/documents/index?kind=${kind}`)
 async function load() { if (!guard()) return; loading.value = true; error.value = ''; try { const [s, receipts] = await Promise.all([api.get('/dashboard'), api.get('/receipts')]); stats.value = s; pending.value = receipts.filter(x => x.status === 'PENDING').slice(0, 3) } catch(e) { error.value = e.message } finally { loading.value = false; uni.stopPullDownRefresh() } }
 onShow(load); onPullDownRefresh(load)
 </script>

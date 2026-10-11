@@ -2,7 +2,6 @@
   "navigationBarTitleText": "业务单据",
   "enablePullDownRefresh": true,
   "usingComponents": {
-    "product-mark": "../../components/ProductMark",
     "bottom-nav": "../../components/BottomNav"
   }
 }

@@ -1,25 +1,30 @@
-<template><view class="page"><text class="eyebrow">STORE DOCUMENTS</text><view class="between"><view class="title">业务单据</view><button v-if="kind === 'orders'" class="primary small" @tap="go('/pages/create/index')">＋ 新建订货</button></view>
-  <scroll-view scroll-x><view class="tabs"><view v-for="(label,key) in kinds" :key="key" :class="['tab',{active:kind===key}]" @tap="switchKind(key)">{{ label }}</view></view></scroll-view>
-  <input v-model="search" class="input" placeholder="搜索单据编号 / 商品名称"/><scroll-view scroll-x><view class="filters"><text v-for="s in filters" :key="s" :class="{chosen:status===s}" @tap="status=s">{{ s === 'ALL' ? '全部' : labels[s] }}</text></view></scroll-view>
-  <view v-if="kind === 'returns'" class="demo-banner">新建退货：进入“已收货”单据，从来源明细申请退货。</view>
-  <view v-if="error" class="error" @tap="load">{{ error }} · 点击重试</view><view v-if="loading" class="empty">正在查询…</view>
-  <view v-for="doc in visible" :key="doc.id" class="card" @tap="go(`/pages/detail/index?kind=${kind}&id=${doc.id}`)"><view class="between"><text class="doc-no">{{ doc.id }}</text><text :class="['tag',{pending:['PENDING','OPEN','SUBMITTED'].includes(doc.status),closed:['CANCELLED','REJECTED'].includes(doc.status)}]">{{ labels[doc.status] }}</text></view><view class="muted" style="margin-top:10rpx">{{ dateText(doc.createdAt) }}</view><view class="divider"/><view class="row"><ProductMark :product="doc.lines[0]"/><view class="grow"><view class="product-name">{{ doc.lines[0]?.name }}{{ doc.lines.length > 1 ? ' 等' : '' }}</view><text class="muted">共 {{ doc.lines.length }} 种商品</text></view><text class="price">¥{{ money(total(doc)) }}</text></view><view class="between" style="margin-top:20rpx"><text class="muted">{{ doc.remark || '门店日常业务' }}</text><text class="link">查看 →</text></view></view>
-  <view v-if="!loading && !error && !filtered.length" class="card empty"><text class="empty-symbol">▤</text>暂无符合条件的单据<view class="hint">调整筛选条件，或从工作台开始新的业务。</view></view><button v-if="filtered.length > limit" class="secondary" @tap="limit += 10">加载更多</button><BottomNav active="orders"/>
-</view></template>
+<template>
+  <view class="page">
+    <view class="title">业务单据</view>
+    <view class="muted intro">选择要办理的业务</view>
+    <view class="module-list">
+      <view v-for="item in modules" :key="item.kind" class="module-card" @tap="go(`/pages/documents/index?kind=${item.kind}`)">
+        <view :class="['module-icon', item.color]">{{ item.icon }}</view>
+        <view class="grow"><view class="module-name">{{ kinds[item.kind] }}</view><text class="muted">{{ item.description }}</text></view>
+        <text class="module-arrow">›</text>
+      </view>
+    </view>
+    <BottomNav active="orders"/>
+  </view>
+</template>
 <script setup>
-import { ref, computed } from 'vue'
-import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
-import { api, guard, go, kinds, dateText } from '../../services/api.js'
-import { labels, money } from '../../core/validation.js'
-import ProductMark from '../../components/ProductMark.vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { guard, go, kinds } from '../../services/api.js'
 import BottomNav from '../../components/BottomNav.vue'
-const kind=ref('orders'), docs=ref([]), loading=ref(false), error=ref(''), search=ref(''), status=ref('ALL'), limit=ref(10)
-let loadId = 0
-const filters=computed(()=>({orders:['ALL','DRAFT','SUBMITTED','APPROVED','CANCELLED'],receipts:['ALL','PENDING','RECEIVED'],differences:['ALL','OPEN','RESOLVED'],returns:['ALL','DRAFT','SUBMITTED','APPROVED','SHIPPED','COMPLETED','REJECTED','CANCELLED']}[kind.value]))
-const filtered=computed(()=>docs.value.filter(x=>(status.value==='ALL'||x.status===status.value)&&(!search.value||`${x.id} ${x.lines.map(y=>y.name).join(' ')}`.includes(search.value.trim())))),visible=computed(()=>filtered.value.slice(0,limit.value))
-const total=doc=>doc.lines.reduce((sum,x)=>sum+x.price*x.quantity,0)
-function switchKind(key){kind.value=key;status.value='ALL';search.value='';limit.value=10;docs.value=[];load()}
-async function load(){if(!guard())return;const ticket=++loadId;loading.value=true;error.value='';try{const result=await api.get(`/${kind.value}`);if(ticket===loadId)docs.value=result}catch(e){if(ticket===loadId)error.value=e.message}finally{if(ticket===loadId)loading.value=false;uni.stopPullDownRefresh()}}
-onLoad(options=>{if(kinds[options.kind])kind.value=options.kind});onShow(load);onPullDownRefresh(load)
+const modules = [
+  { kind: 'orders', description: '订货记录与审核进度', icon: '＋', color: 'mint' },
+  { kind: 'receipts', description: '配送收货与明细确认', icon: '↓', color: 'blue' },
+  { kind: 'differences', description: '收货差异与核对记录', icon: '≠', color: 'sand' },
+  { kind: 'returns', description: '退货申请与处理进度', icon: '↗', color: 'rose' }
+]
+onShow(guard)
+onLoad(options => { if (kinds[options.kind] && guard()) uni.redirectTo({ url: `/pages/documents/index?kind=${options.kind}` }) })
 </script>
-<style scoped>.filters{display:flex;gap:32rpx;padding:28rpx 4rpx;white-space:nowrap;font-size:25rpx;color:#8c9788}.filters .chosen{color:#2a6e52;font-weight:700}.doc-no{font-size:25rpx;font-weight:650;word-break:break-all}</style>
+<style scoped>
+.intro{margin-top:12rpx}.module-list{margin-top:32rpx;background:white;border:1rpx solid #e7ede3;border-radius:22rpx;padding:0 26rpx}.module-card{display:flex;align-items:center;gap:24rpx;padding:32rpx 0;border-bottom:1rpx solid #edf0e9}.module-card:last-child{border-bottom:0}.module-icon{width:76rpx;height:76rpx;border-radius:18rpx;display:flex;align-items:center;justify-content:center;font-size:38rpx;flex-shrink:0}.module-name{font-size:31rpx;font-weight:650;margin-bottom:6rpx}.module-arrow{font-size:42rpx;color:#9eae9c}.module-card .muted{font-size:23rpx}
+</style>

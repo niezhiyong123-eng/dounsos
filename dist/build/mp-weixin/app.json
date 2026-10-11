@@ -3,6 +3,7 @@
     "pages/login/index",
     "pages/home/index",
     "pages/orders/index",
+    "pages/documents/index",
     "pages/create/index",
     "pages/detail/index",
     "pages/profile/index"

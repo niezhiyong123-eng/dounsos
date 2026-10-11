@@ -23,7 +23,7 @@ export function guard() { if (!client.getSession()) { uni.reLaunch({ url: '/page
 export function report(error) { uni.showModal({ title: '操作提示', content: error?.message || '操作失败，请稍后重试', showCancel: false }) }
 export function confirm(content, title = '确认操作') { return new Promise(resolve => uni.showModal({ title, content, confirmColor: '#23765c', success: res => resolve(res.confirm), fail: () => resolve(false) })) }
 export const go = url => uni.navigateTo({ url })
-export const kinds = { orders: '订货单', receipts: '收货单', differences: '差异单', returns: '退货单' }
+export const kinds = { orders: '订货单', receipts: '收货单', differences: '差异单', returns: '退货申请单' }
 export const dateText = value => {
   if (!value) return ''
   const d = new Date(value), pad = n => String(n).padStart(2, '0')

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "选择订货商品",
+  "usingComponents": {
+    "product-mark": "../../components/ProductMark"
+  }
+}

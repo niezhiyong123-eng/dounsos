@@ -2,6 +2,11 @@ import { assert, loginInput, linesInput, quantity, note, BusinessError } from '.
 const copy = value => JSON.parse(JSON.stringify(value))
 export const DEMO_ACCOUNT = 'store001'
 export const DEMO_PASSWORD = 'Doudou123'
+const demoTemplates = () => [
+  {id:'TPL-DAILY',name:'日常补货模板',description:'门店常用商品，适合日常综合补货',storeIds:['S001'],skus:['DD1001','DD1002','DD1003','DD1004','DD1005','DD1006']},
+  {id:'TPL-DRINK',name:'乳品饮料模板',description:'牛奶、酸奶及饮用水专项订货',storeIds:['S001'],skus:['DD1001','DD1002','DD1003']},
+  {id:'TPL-SNACK',name:'烘焙零食模板',description:'面包与零食集中补货',storeIds:['S001'],skus:['DD1004','DD1005']}
+]
 export function initialState() {
   const products = [
     { sku: 'DD1001', name: '每日鲜牛奶', spec: '250ml × 12盒', unit: '箱', price: 4800, stock: 18, category: '乳品饮料', min: 1, step: 1, color: 'mint', mark: '奶' },
@@ -13,7 +18,7 @@ export function initialState() {
   ]
   const line = (i, n, received) => ({ ...products[i], quantity: n, ...(received !== undefined ? { received, damaged: 0 } : {}) })
   const stamp = new Date().toISOString()
-  return { seq: 100, sessions: {}, failures: 0, lockedUntil: 0, idempotency: {}, products,
+  return { seq: 100, sessions: {}, failures: 0, lockedUntil: 0, idempotency: {}, products, orderTemplates:demoTemplates(),
     orders: [{ id: 'DH20261008001', status: 'SUBMITTED', storeId: 'S001', version: 1, createdAt: stamp, remark: '日常补货', lines: [line(0, 4), line(2, 6)], history: [{ text: '门店提交订货', at: stamp }] }],
     receipts: [
       { id: 'SH20261009001', sourceId: 'DH20261007001', status: 'PENDING', storeId: 'S001', version: 1, createdAt: stamp, remark: '华东配送中心 · 常温配送', lines: [line(0, 5), line(2, 8), line(4, 12)], history: [{ text: '配送中心已发货', at: stamp }] },
@@ -23,6 +28,8 @@ export function initialState() {
 // Local simulation only. Real mode never calls this module's transport.
 export function createMockTransport(storage, now = Date.now) {
   let db = storage.get('demo-db-v1') || initialState()
+  // Preserve documents when upgrading previously saved demo data.
+  if (!db.orderTemplates) db.orderTemplates=demoTemplates()
   const save = () => storage.set('demo-db-v1', copy(db))
   const id = prefix => `${prefix}${now()}${++db.seq}`
   function issue() {
@@ -48,7 +55,15 @@ export function createMockTransport(storage, now = Date.now) {
   }
   function execute(path, method, data) {
     const [, kind, docId, action] = path.split('/')
+    const templateBy = templateId => {const template=db.orderTemplates.find(x=>x.id===templateId);assert(template,'订货模板不存在',404);assert(template.storeIds.includes('S001'),'当前门店不可使用此模板',403);return template}
     if (method === 'GET') {
+      if(kind==='order-templates') {
+        const summary=t=>({id:t.id,name:t.name,description:t.description,productCount:db.products.filter(p=>t.skus.includes(p.sku)).length})
+        if(!docId)return db.orderTemplates.filter(t=>t.storeIds.includes('S001')).map(summary)
+        const template=templateBy(docId)
+        if(action==='products')return db.products.filter(p=>template.skus.includes(p.sku))
+        assert(!action,'接口不存在',404);return summary(template)
+      }
       if (kind === 'products') return db.products
       if (kind === 'dashboard') return { pending: db.receipts.filter(x => x.status === 'PENDING').length, differences: db.differences.filter(x => x.status === 'OPEN').length, orders: db.orders.filter(x => x.status === 'SUBMITTED').length, returns: db.returns.filter(x => !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(x.status)).length }
       assert(['orders', 'receipts', 'differences', 'returns'].includes(kind), '接口不存在', 404)
@@ -59,13 +74,16 @@ export function createMockTransport(storage, now = Date.now) {
     }
     assert(method === 'POST', '不支持的请求方法', 405)
     if (!docId && kind === 'orders') {
+      assert(typeof data.templateId==='string'&&data.templateId,'请选择订货模板')
+      const template=templateBy(data.templateId)
       linesInput(data.lines); note(data.remark || '')
       const lines = data.lines.map(x => {
         const p = db.products.find(p => p.sku === x.sku); assert(p, '商品不存在')
+        assert(template.skus.includes(p.sku),'商品不属于所选订货模板')
         assert(x.quantity >= p.min && x.quantity % p.step === 0, `${p.name}须按${p.step}${p.unit}订购，至少${p.min}${p.unit}`)
         return { ...p, quantity: x.quantity }
       })
-      const doc = createDoc('DH', lines, data.remark || ''); db.orders.push(doc); return doc
+      const doc = createDoc('DH', lines, data.remark || '',{templateId:template.id,templateName:template.name}); db.orders.push(doc); return doc
     }
     if (!docId && kind === 'returns') {
       linesInput(data.lines); note(data.remark, true)

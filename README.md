@@ -92,3 +92,5 @@ dist/build/mp-weixin/ 可直接导入微信开发者工具的产物
 详见 [架构与接口规范](docs/架构与接口规范.md)、[实施与测试标准](docs/实施与测试标准.md)。
 
 参考：[uni-app CLI 输出目录](https://uniapp.dcloud.net.cn/quickstart-cli.html)、[uni-app 微信小程序发布流程](https://uniapp.dcloud.net.cn/quickstart)。
+
+新建订货：先确认当前门店并选择订货模板，点击下一步进入商品选择；品类在左侧，商品及数量在右侧。体验版提供三种演示模板，真实模板等待 CMP5 联调。

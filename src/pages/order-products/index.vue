@@ -1,0 +1,37 @@
+<template><view class="product-page">
+  <view class="product-header"><view class="title">选择订货商品</view><view class="muted">{{template.name}} · {{user.storeName}}</view><input v-model="search" class="input search" placeholder="搜索商品名称 / 编码"/></view>
+  <view v-if="error" class="error" @tap="load">{{error}} · 点击重试</view><view v-if="loading" class="empty">商品加载中…</view>
+  <view v-if="!loading&&!error" class="catalog">
+    <scroll-view scroll-y class="category-rail"><view v-for="c in categories" :key="c" :class="['category-item',{active:category===c}]" @tap="category=c">{{c}}</view></scroll-view>
+    <scroll-view scroll-y class="product-list" :scroll-top="scrollTop">
+      <view v-for="p in filtered" :key="p.sku" class="card product-card"><view class="row"><ProductMark :product="p"/><view class="grow"><view class="product-name">{{p.name}}</view><text class="muted">{{p.spec}}</text><view class="price">¥{{money(p.price)}}<text class="muted"> / {{p.unit}}</text></view></view></view><view class="quantity-row"><text class="hint">{{p.min}}{{p.unit}}起订 · {{p.step}}{{p.unit}}递增</text><view class="stepper"><button :disabled="busy" @tap="change(p,-1)">−</button><input v-model="counts[p.sku]" type="number" maxlength="5" :disabled="busy"/><button :disabled="busy" @tap="change(p,1)">＋</button></view></view></view>
+      <view v-if="!filtered.length" class="empty">没有找到商品</view>
+      <view class="card"><text class="field-label">订货备注（选填）</text><textarea v-model="remark" class="textarea" maxlength="200" placeholder="例如：请安排上午配送" :disabled="busy"/><text class="hint">订货价格以 CMP5 确认为准。</text></view>
+    </scroll-view>
+  </view>
+  <view class="action-bar"><view class="between"><view><text class="muted">已选 {{selected.length}} 种商品</text><view class="price">合计 ¥{{money(total)}}</view></view><button class="primary" :loading="busy" :disabled="busy||loading||!!error||!selected.length" @tap="save">保存并核对 →</button></view></view>
+</view></template>
+<script setup>
+import {ref,reactive,computed,watch,nextTick} from 'vue'
+import {onLoad} from '@dcloudio/uni-app'
+import {api,guard,report,newKey,storage,client} from '../../services/api.js'
+import {linesInput,quantity,assert,money} from '../../core/validation.js'
+import ProductMark from '../../components/ProductMark.vue'
+const user=computed(()=>client.getSession()?.user||{}),template=ref({}),templateId=ref(''),products=ref([]),counts=reactive({}),remark=ref(''),search=ref(''),category=ref('全部'),busy=ref(false),loading=ref(false),error=ref(''),scrollTop=ref(0)
+let key=newKey(),lastPayload='',restoring=false
+const draftKey=()=>`order-draft:${user.value.storeId}`
+const categories=computed(()=>['全部',...new Set(products.value.map(p=>p.category))])
+const filtered=computed(()=>products.value.filter(p=>(category.value==='全部'||category.value===p.category)&&`${p.name}${p.sku}`.includes(search.value.trim())))
+const selected=computed(()=>products.value.filter(p=>Number(counts[p.sku])>0).map(p=>({...p,quantity:Number(counts[p.sku])})))
+const total=computed(()=>selected.value.reduce((s,p)=>s+p.price*p.quantity,0))
+watch([category,search],async()=>{scrollTop.value=1;await nextTick();scrollTop.value=0})
+watch([counts,remark],()=>{if(restoring||!client.getSession()||!templateId.value)return;const drafts=storage.get(draftKey())||{};drafts.templates={...drafts.templates,[templateId.value]:{counts:{...counts},remark:remark.value}};storage.set(draftKey(),drafts)},{deep:true,flush:'sync'})
+function restore(){const drafts=storage.get(draftKey());const draft=drafts?.templates?.[templateId.value]||(templateId.value==='TPL-DAILY'?drafts:null);if(!draft)return;restoring=true;for(const p of products.value)if(draft.counts?.[p.sku]!==undefined)counts[p.sku]=draft.counts[p.sku];remark.value=draft.remark||'';restoring=false}
+function change(p,step){const n=Number(counts[p.sku])||0;counts[p.sku]=String(Math.max(0,n===0&&step>0?p.min:n+step*p.step))}
+async function load(){if(!guard())return;loading.value=true;error.value='';try{assert(templateId.value,'请返回上一页选择订货模板');const path=`/order-templates/${encodeURIComponent(templateId.value)}`;const results=await Promise.all([api.get(path),api.get(path+'/products')]);template.value=results[0];products.value=results[1];restore()}catch(e){products.value=[];error.value=e.message}finally{loading.value=false}}
+onLoad((options={})=>{if(!guard())return;templateId.value=options.templateId||'';load()})
+async function save(){if(busy.value||loading.value||error.value)return;try{for(const p of products.value){const value=counts[p.sku];if(value!==undefined&&value!==''){const n=quantity(value,'订货数量',true);if(n)assert(n>=p.min&&n%p.step===0,`${p.name}至少${p.min}${p.unit}，按${p.step}${p.unit}递增`)}}const lines=selected.value.map(p=>({sku:p.sku,quantity:p.quantity}));linesInput(lines);busy.value=true;const payload=JSON.stringify({templateId:templateId.value,lines,remark:remark.value});if(lastPayload!==payload){key=newKey();lastPayload=payload}const doc=await api.post('/orders',JSON.parse(payload),key);restoring=true;Object.keys(counts).forEach(k=>delete counts[k]);remark.value='';const drafts=storage.get(draftKey())||{};delete drafts.counts;delete drafts.remark;if(drafts.templates)delete drafts.templates[templateId.value];storage.set(draftKey(),drafts);restoring=false;uni.redirectTo({url:`/pages/detail/index?kind=orders&id=${doc.id}`})}catch(e){report(e)}finally{busy.value=false}}
+</script>
+<style scoped>
+.product-page{height:100vh;display:flex;flex-direction:column;padding-bottom:calc(160rpx + env(safe-area-inset-bottom));overflow:hidden}.product-header{padding:24rpx 26rpx 18rpx;background:white}.product-header .muted{display:block;margin-top:6rpx}.search{margin-top:20rpx;height:76rpx}.catalog{display:flex;flex:1;min-height:0;overflow:hidden}.category-rail{width:166rpx;flex-shrink:0;height:100%;background:#edf0ee}.category-item{padding:30rpx 14rpx;text-align:center;font-size:25rpx;color:#77827b;border-left:6rpx solid transparent;word-break:break-all}.category-item.active{color:#0a9c67;background:white;border-left-color:#0eab70;font-weight:600}.product-list{flex:1;min-width:0;width:0;height:100%;padding:18rpx 16rpx}.product-card{padding:20rpx 16rpx}.product-card .row{gap:14rpx}.product-card .product-name{font-size:27rpx}.product-card .muted{font-size:22rpx}.product-card .product-mark{width:65rpx;height:78rpx}.quantity-row{margin-top:20rpx;display:flex;flex-wrap:wrap;gap:12rpx;align-items:center;justify-content:space-between}.quantity-row .hint{font-size:21rpx}.stepper{display:flex;align-items:center;background:#eef8f2;border-radius:8rpx;overflow:hidden;margin-left:auto}.stepper button{width:55rpx;height:58rpx;padding:0;line-height:58rpx;background:transparent;color:#0a9c67;font-size:30rpx}.stepper input{width:66rpx;height:58rpx;text-align:center;font-size:25rpx;background:white;border:1rpx solid #edf0e9}.product-list .field-label{margin-top:0}.product-list .textarea{height:145rpx;min-height:145rpx;font-size:24rpx}.product-page .action-bar{padding:20rpx 26rpx calc(20rpx + env(safe-area-inset-bottom))}.product-page .action-bar button{padding:22rpx;font-size:26rpx}
+</style>

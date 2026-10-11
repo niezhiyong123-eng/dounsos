@@ -37,6 +37,10 @@
       }
     },
     {
+      "path": "pages/order-products/index",
+      "style": {"navigationBarTitleText": "选择订货商品"}
+    },
+    {
       "path": "pages/detail/index",
       "style": {
         "navigationBarTitleText": "单据详情"

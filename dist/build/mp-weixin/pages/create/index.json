@@ -1,6 +1,6 @@
 {
   "navigationBarTitleText": "新建订货单",
   "usingComponents": {
-    "product-mark": "../../components/ProductMark"
+    "line-icon": "../../components/LineIcon"
   }
 }

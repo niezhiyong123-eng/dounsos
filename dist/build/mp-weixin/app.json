@@ -5,6 +5,7 @@
     "pages/orders/index",
     "pages/documents/index",
     "pages/create/index",
+    "pages/order-products/index",
     "pages/detail/index",
     "pages/profile/index"
   ],

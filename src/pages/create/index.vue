@@ -1,26 +1,24 @@
-<template><view class="page"><text class="eyebrow">REPLENISH YOUR STORE</text><view class="title">新建订货</view><text class="muted">按需补货，让货架保持好状态</text><view class="spacer"/><input v-model="search" class="input" placeholder="搜索商品名称 / 编码"/><scroll-view scroll-x><view class="tabs"><view v-for="c in categories" :key="c" :class="['tab',{active:category===c}]" @tap="category=c">{{ c }}</view></view></scroll-view>
-  <view v-if="error" class="error" @tap="load">{{ error }} · 点击重试</view><view v-if="loading" class="empty">商品加载中…</view>
-  <view v-for="p in filtered" :key="p.sku" class="card"><view class="row"><ProductMark :product="p"/><view class="grow"><view class="product-name">{{p.name}}</view><text class="muted">{{p.spec}}</text><view class="price">¥{{money(p.price)}}<text class="muted"> / {{p.unit}}</text></view></view></view><view class="between" style="margin-top:24rpx"><text class="hint">{{p.min}}{{p.unit}}起订 · {{p.step}}{{p.unit}}递增</text><view class="stepper"><button :disabled="busy" @tap="change(p,-1)">−</button><input v-model="counts[p.sku]" type="number" maxlength="5" :disabled="busy"/><button :disabled="busy" @tap="change(p,1)">＋</button></view></view></view>
-  <view v-if="!loading&&!filtered.length" class="empty">没有找到商品</view><view class="card"><text class="field-label">订货备注（选填）</text><textarea v-model="remark" class="textarea" maxlength="200" placeholder="例如：请安排上午配送" :disabled="busy"/><text class="hint">金额为演示订货价；真实价格以 CMP5 确认为准。</text></view>
-  <view class="action-bar"><view class="between"><view><text class="muted">已选 {{selected.length}} 种商品</text><view class="price">合计 ¥{{money(total)}}</view></view><button class="primary" :loading="busy" :disabled="busy||!selected.length" @tap="save">保存并核对 →</button></view></view>
+<template><view class="page">
+  <view class="title">新建订货单</view><view class="muted intro">选择订货模板后添加商品</view>
+  <view class="card store-card"><LineIcon name="store"/><view><text class="field-label">当前门店</text><view class="store-name">{{user.storeName}}</view><text class="muted">门店编码 {{user.storeId}}</text></view></view>
+  <view class="section-title">选择订货模板</view>
+  <view v-if="loading" class="empty">模板加载中…</view><view v-if="error" class="error" @tap="load">{{error}} · 点击重试</view>
+  <view v-for="item in templates" :key="item.id" :class="['card','template-card',{selected:chosen===item.id}]" @tap="chosen=item.id">
+    <view class="between"><view class="grow"><view class="template-name">{{item.name}}</view><view class="muted description">{{item.description}}</view><text class="hint">{{item.productCount}} 种可订商品</text></view><view class="radio">{{chosen===item.id?'✓':''}}</view></view>
+  </view>
+  <view v-if="!loading&&!error&&!templates.length" class="empty">当前门店暂无可用模板，请联系业务管理员配置</view>
+  <view class="action-bar"><button class="primary" :disabled="!chosen||loading||!!error" @tap="next">下一步 · 选择订货商品</button></view>
 </view></template>
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { api, guard, report, newKey, storage, client } from '../../services/api.js'
-import { linesInput, quantity, assert, money } from '../../core/validation.js'
-import ProductMark from '../../components/ProductMark.vue'
-const products=ref([]),counts=reactive({}),remark=ref(''),search=ref(''),category=ref('全部'),busy=ref(false),loading=ref(false),error=ref('')
-let key=newKey(),lastPayload=''
-const draftKey=()=>`order-draft:${client.getSession()?.user.storeId}`
-const categories=['全部','乳品饮料','烘焙零食','日用百货']
-const filtered=computed(()=>products.value.filter(p=>(category.value==='全部'||category.value===p.category)&&`${p.name}${p.sku}`.includes(search.value.trim())))
-const selected=computed(()=>products.value.filter(p=>Number(counts[p.sku])>0).map(p=>({...p,quantity:Number(counts[p.sku])})))
-const total=computed(()=>selected.value.reduce((s,p)=>s+p.price*p.quantity,0))
-watch([counts,remark],()=>{if(client.getSession())storage.set(draftKey(),{counts:{...counts},remark:remark.value})},{deep:true})
-function change(p,step){const n=Number(counts[p.sku])||0;counts[p.sku]=String(Math.max(0,n===0&&step>0?p.min:n+step*p.step))}
-async function load(){if(!guard())return;loading.value=true;error.value='';try{products.value=await api.get('/products')}catch(e){error.value=e.message}finally{loading.value=false}}
-onLoad(()=>{if(!guard())return;const draft=storage.get(draftKey());if(draft){Object.assign(counts,draft.counts);remark.value=draft.remark||''}load()})
-async function save(){if(busy.value)return;try{for(const p of products.value){const value=counts[p.sku];if(value!==undefined&&value!==''){const n=quantity(value,'订货数量',true);if(n)assert(n>=p.min&&n%p.step===0,`${p.name}至少${p.min}${p.unit}，按${p.step}${p.unit}递增`)}}const lines=selected.value.map(p=>({sku:p.sku,quantity:p.quantity}));linesInput(lines);busy.value=true;const payload=JSON.stringify({lines,remark:remark.value});if(lastPayload!==payload){key=newKey();lastPayload=payload}const doc=await api.post('/orders',JSON.parse(payload),key);Object.keys(counts).forEach(k=>delete counts[k]);remark.value='';storage.remove(draftKey());uni.redirectTo({url:`/pages/detail/index?kind=orders&id=${doc.id}`})}catch(e){report(e)}finally{busy.value=false}}
+import {ref,computed} from 'vue'
+import {onShow} from '@dcloudio/uni-app'
+import {api,client,guard,go} from '../../services/api.js'
+import LineIcon from '../../components/LineIcon.vue'
+const user=computed(()=>client.getSession()?.user||{}),templates=ref([]),chosen=ref(''),loading=ref(false),error=ref('')
+async function load(){if(!guard())return;loading.value=true;error.value='';try{templates.value=await api.get('/order-templates');if(!templates.value.some(x=>x.id===chosen.value))chosen.value=''}catch(e){templates.value=[];chosen.value='';error.value=e.message}finally{loading.value=false}}
+onShow(load)
+function next(){if(!chosen.value||loading.value||error.value)return;go(`/pages/order-products/index?templateId=${encodeURIComponent(chosen.value)}`)}
 </script>
-<style scoped>.stepper{display:flex;align-items:center;background:#f3f6ef;border-radius:13rpx;overflow:hidden}.stepper button{width:65rpx;height:62rpx;padding:0;line-height:62rpx;background:transparent;color:#38764f;font-size:30rpx}.stepper input{width:80rpx;height:62rpx;text-align:center;font-size:27rpx;background:white;border:1rpx solid #edf0e9}</style>
+<style scoped>
+.intro{margin:10rpx 0 28rpx}.store-card{display:flex;align-items:center;gap:26rpx}.store-card .field-label{margin:0 0 8rpx}.store-name{font-size:30rpx;font-weight:600;margin-bottom:7rpx}.template-card{border:2rpx solid transparent}.template-card.selected{border-color:#0eab70;background:#f4fcf7}.template-name{font-size:30rpx;font-weight:600}.description{margin:8rpx 0}.radio{width:40rpx;height:40rpx;border:2rpx solid #cdd8d0;border-radius:50%;text-align:center;line-height:36rpx;flex-shrink:0;color:white}.selected .radio{background:#0eab70;border-color:#0eab70}
+</style>

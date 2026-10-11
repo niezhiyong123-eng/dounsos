@@ -4,10 +4,12 @@
     "dashboard widths 320/375/390/430",
     "module search and empty state",
     "four independent document modules without tabs",
+    "template selection and left category rail at four widths",
     "order create submit approve",
     "receipt shortage",
     "difference resolution",
     "return create submit approve ship complete",
+    "template product scope and drafts isolated and restored after reload",
     "profile store details and logout"
   ],
   "pageErrors": [],

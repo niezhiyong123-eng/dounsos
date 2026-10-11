@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "登录门店",
-  "usingComponents": {}
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "brand-header": "../../components/BrandHeader"
+  }
 }

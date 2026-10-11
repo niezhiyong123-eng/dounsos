@@ -1,7 +1,10 @@
 {
   "navigationBarTitleText": "业务单据",
   "enablePullDownRefresh": true,
+  "navigationStyle": "custom",
   "usingComponents": {
+    "brand-header": "../../components/BrandHeader",
+    "line-icon": "../../components/LineIcon",
     "bottom-nav": "../../components/BottomNav"
   }
 }

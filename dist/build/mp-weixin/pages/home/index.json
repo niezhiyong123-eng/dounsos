@@ -1,7 +1,10 @@
 {
   "navigationBarTitleText": "豆豆 · 门店工作台",
   "enablePullDownRefresh": true,
+  "navigationStyle": "custom",
   "usingComponents": {
+    "brand-header": "../../components/BrandHeader",
+    "line-icon": "../../components/LineIcon",
     "bottom-nav": "../../components/BottomNav"
   }
 }

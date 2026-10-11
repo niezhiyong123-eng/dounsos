@@ -1,0 +1,1 @@
+"use strict";const e=require("../common/vendor.js"),n={__name:"LineIcon",props:{name:{type:String,default:"order"}},setup:n=>(a,r)=>e.e({a:"difference"===n.name},(n.name,{}),{b:"return"===n.name},(n.name,{}),{c:"receive"===n.name},(n.name,{}),{d:"order"===n.name},(n.name,{}),{e:e.n("icon-"+n.name)})},a=e._export_sfc(n,[["__scopeId","data-v-6915050c"]]);wx.createComponent(a);

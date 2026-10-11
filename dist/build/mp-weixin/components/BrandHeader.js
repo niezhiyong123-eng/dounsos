@@ -1,0 +1,1 @@
+"use strict";const e=require("../common/vendor.js"),t={__name:"BrandHeader",props:{subtitle:String},setup(t){const s=e.ref(62);try{const t=e.index.getSystemInfoSync();s.value=(t.statusBarHeight||20)+44}catch{}return(r,n)=>e.e({a:t.subtitle},t.subtitle?{b:e.t(t.subtitle)}:{},{c:s.value+"px"})}},s=e._export_sfc(t,[["__scopeId","data-v-68d1ee5d"]]);wx.createComponent(s);

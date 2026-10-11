@@ -10,8 +10,8 @@
   ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationBarBackgroundColor": "#f5f7f5",
-    "backgroundColor": "#f5f7f5"
+    "navigationBarBackgroundColor": "#f4f5f5",
+    "backgroundColor": "#f4f5f5"
   },
   "usingComponents": {}
 }

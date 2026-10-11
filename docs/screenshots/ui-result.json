@@ -2,12 +2,13 @@
   "checks": [
     "login and dashboard",
     "dashboard widths 320/375/390/430",
+    "module search and empty state",
     "four independent document modules without tabs",
     "order create submit approve",
     "receipt shortage",
     "difference resolution",
     "return create submit approve ship complete",
-    "logout"
+    "profile store details and logout"
   ],
   "pageErrors": [],
   "note": "H5 browser verification only; WeChat simulator/device validation still required."

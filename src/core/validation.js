@@ -22,5 +22,16 @@ export function linesInput(lines) {
   lines.forEach(x => { assert(typeof x.sku === 'string' && x.sku.length > 0, '商品编码不能为空'); quantity(x.quantity) })
   return lines
 }
+export function localDate(value = new Date()) {
+  const pad = n => String(n).padStart(2, '0')
+  return `${value.getFullYear()}-${pad(value.getMonth()+1)}-${pad(value.getDate())}`
+}
+export function arrivalDateInput(value, today = localDate()) {
+  assert(typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value), '到货日期格式须为 YYYY-MM-DD')
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month-1, day)
+  assert(localDate(date) === value && value >= today, '到货日期不能早于今天，且须为有效日期')
+  return value
+}
 export const money = cents => (Number(cents || 0) / 100).toFixed(2)
 export const labels = { DRAFT: '草稿', SUBMITTED: '待审核', APPROVED: '已审核', CANCELLED: '已取消', PENDING: '待收货', RECEIVED: '已收货', OPEN: '待核对', RESOLVED: '已核对', REJECTED: '已驳回', SHIPPED: '退货在途', COMPLETED: '已完成' }

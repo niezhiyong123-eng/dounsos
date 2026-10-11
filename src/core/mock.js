@@ -1,4 +1,4 @@
-import { assert, loginInput, linesInput, quantity, note, BusinessError } from './validation.js'
+import { assert, loginInput, linesInput, quantity, note, BusinessError, arrivalDateInput, localDate } from './validation.js'
 const copy = value => JSON.parse(JSON.stringify(value))
 export const DEMO_ACCOUNT = 'store001'
 export const DEMO_PASSWORD = 'Doudou123'
@@ -76,6 +76,7 @@ export function createMockTransport(storage, now = Date.now) {
     if (!docId && kind === 'orders') {
       assert(typeof data.templateId==='string'&&data.templateId,'请选择订货模板')
       const template=templateBy(data.templateId)
+      const arrivalDate=data.arrivalDate===undefined?'':arrivalDateInput(data.arrivalDate,localDate(new Date(now())))
       linesInput(data.lines); note(data.remark || '')
       const lines = data.lines.map(x => {
         const p = db.products.find(p => p.sku === x.sku); assert(p, '商品不存在')
@@ -83,7 +84,7 @@ export function createMockTransport(storage, now = Date.now) {
         assert(x.quantity >= p.min && x.quantity % p.step === 0, `${p.name}须按${p.step}${p.unit}订购，至少${p.min}${p.unit}`)
         return { ...p, quantity: x.quantity }
       })
-      const doc = createDoc('DH', lines, data.remark || '',{templateId:template.id,templateName:template.name}); db.orders.push(doc); return doc
+      const doc = createDoc('DH', lines, data.remark || '',{templateId:template.id,templateName:template.name,arrivalDate}); db.orders.push(doc); return doc
     }
     if (!docId && kind === 'returns') {
       linesInput(data.lines); note(data.remark, true)

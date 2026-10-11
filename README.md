@@ -94,3 +94,13 @@ dist/build/mp-weixin/ 可直接导入微信开发者工具的产物
 参考：[uni-app CLI 输出目录](https://uniapp.dcloud.net.cn/quickstart-cli.html)、[uni-app 微信小程序发布流程](https://uniapp.dcloud.net.cn/quickstart)。
 
 新建订货：先确认当前门店并选择订货模板，点击下一步进入商品选择；品类在左侧，商品及数量在右侧。体验版提供三种演示模板，真实模板等待 CMP5 联调。
+
+## 微信页面文字错位或按钮提示没有方法
+
+如果到货日期显示模板名、搜索框显示 false、错误提示显示 [object Object]，这是不同版本的页面 JS 与 WXML 混用/缓存所致。已使用上一版 JS 配合新版 WXML 复现相同字段错位，新增微信构建数据绑定与文件一致性检查。
+
+1. 关闭旧项目。将 `releases/豆豆店务-微信完整导入包-20261011.zip` 解压到一个新的空目录（不能只覆盖 WXML）。
+2. 在微信开发者工具中导入该新目录；完整包根目录已有 project.config.json，无需填写源码工程的 dist 路径。
+3. 清除全部缓存后重新编译，进入新建订货并选择模板；确认日期显示日期、搜索框空白、商品数量为0。
+
+继续用源码工程时，运行 `npm run build:mp-weixin`，随后 `npm run check:weixin`，再在工具中清缓存编译。新版构建命令自动校验日期、搜索、错误、数量及按钮绑定，并生成 build-integrity.json；不要单独复制构建中的 JS/WXML/WXSS。此检查不替代微信真机验证。

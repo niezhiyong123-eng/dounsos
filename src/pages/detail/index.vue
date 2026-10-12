@@ -1,6 +1,6 @@
 <template><view class="page">
   <view v-if="loading" class="empty">单据加载中…</view><view v-if="error" class="error" @tap="load">{{error}} · 点击重试</view>
-  <template v-if="doc"><view class="between"><view><text class="eyebrow">DOCUMENT DETAILS</text><view class="title">{{returnMode?'申请退货':kinds[kind]+'详情'}}</view></view><text class="tag">{{labels[doc.status]}}</text></view>
+  <template v-if="doc"><view class="between"><view><text class="eyebrow">DOCUMENT DETAILS</text><view class="title">{{returnMode?'申请退货':kinds[kind]+'详情'}}</view></view><text class="tag">{{documentLabel(kind,doc.status)}}</text></view>
     <view v-if="isDemo" class="demo-banner">演示单据 · 操作不会写入真实库存或 CMP5</view>
     <view class="card"><view class="meta-row"><text class="muted">单据编号</text><text>{{doc.id}}</text></view><view v-if="doc.arrivalDate" class="meta-row"><text class="muted">到货日期</text><text>{{doc.arrivalDate}}</text></view><view v-if="doc.templateName" class="meta-row"><text class="muted">订货模板</text><text>{{doc.templateName}}</text></view><view v-if="doc.sourceId" class="meta-row"><text class="muted">来源单号</text><text>{{doc.sourceId}}</text></view><view class="meta-row"><text class="muted">创建时间</text><text>{{dateText(doc.createdAt)}}</text></view><view class="meta-row"><text class="muted">门店</text><text>豆豆便利 · 万象城店</text></view><view v-if="doc.remark" class="meta-row"><text class="muted">备注</text><text>{{doc.remark}}</text></view></view>
     <view class="between"><view class="section-title">{{returnMode?'选择退货商品':'商品明细'}}</view><text class="muted">{{doc.lines.length}} 种商品</text></view>
@@ -17,8 +17,9 @@
     <view class="section-title">操作记录</view><view class="card"><view v-for="(entry,index) in doc.history" :key="index" class="history"><text>{{entry.text}}</text><text class="muted">{{dateText(entry.at)}}</text></view></view>
     <view v-if="isDemo&&!returnMode&&((['orders','returns'].includes(kind)&&doc.status==='SUBMITTED')||(kind==='returns'&&doc.status==='SHIPPED'))" class="demo-panel"><view class="product-name">演示流程控制</view><text class="hint">用于体验后续步骤；正式模式不显示，真实审批由 CMP5 完成。</text><view class="row" style="margin-top:20rpx"><button v-if="doc.status==='SUBMITTED'" class="secondary small" :disabled="busy" @tap="act('demo-approve','模拟 CMP 审核通过？订货单将生成待收货配送单。')">模拟审核通过</button><button v-if="kind==='returns'&&doc.status==='SUBMITTED'" class="secondary small" :disabled="busy" @tap="act('demo-reject','模拟 CMP 驳回退货申请？')">模拟驳回</button><button v-if="doc.status==='SHIPPED'" class="secondary small" :disabled="busy" @tap="act('demo-complete','模拟配送中心确认收到退货？')">模拟退货接收</button></view></view>
     <view class="action-bar" v-if="hasActions"><view class="row">
-      <button v-if="['orders','returns'].includes(kind)&&['DRAFT','SUBMITTED'].includes(doc.status)" class="secondary" :disabled="busy" @tap="act('cancel','确认取消此单据？取消后不可恢复。')">取消单据</button>
-      <button v-if="['orders','returns'].includes(kind)&&doc.status==='DRAFT'" class="primary" :loading="busy" :disabled="busy" @tap="act('submit','核对商品和数量后，提交审核？')">提交审核</button>
+      <button v-if="(kind==='orders'&&doc.status==='DRAFT')||(kind==='returns'&&['DRAFT','SUBMITTED'].includes(doc.status))" class="secondary" :disabled="busy" @tap="act('cancel','确认取消此单据？取消后不可恢复。')">取消单据</button>
+      <button v-if="kind==='orders'&&doc.status==='DRAFT'" class="secondary" :disabled="busy" @tap="go(`/pages/order-products/index?id=${encodeURIComponent(doc.id)}`)">编辑单据</button>
+      <button v-if="['orders','returns'].includes(kind)&&doc.status==='DRAFT'" class="primary" :loading="busy" :disabled="busy" @tap="act('submit',kind==='orders'?'确认提交？提交后不可编辑。':'核对商品和数量后，提交审核？')">{{kind==='orders'?'提交单据':'提交审核'}}</button>
       <button v-if="kind==='receipts'&&doc.status==='PENDING'" class="primary" :loading="busy" :disabled="busy" @tap="receive">确认收货</button>
       <button v-if="kind==='receipts'&&doc.status==='RECEIVED'&&!returnMode" class="primary" :disabled="busy" @tap="returnMode=true">申请退货</button>
       <button v-if="returnMode" class="secondary" :disabled="busy" @tap="returnMode=false">取消填写</button><button v-if="returnMode" class="primary" :loading="busy" :disabled="busy" @tap="createReturn">保存退货申请</button>
@@ -30,8 +31,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { api, guard, kinds, dateText, isDemo, report, confirm, newKey } from '../../services/api.js'
-import { labels, money, quantity, assert, note, linesInput } from '../../core/validation.js'
+import { api, guard, go, kinds, dateText, isDemo, report, confirm, newKey } from '../../services/api.js'
+import { labels, documentLabel, money, quantity, assert, note, linesInput } from '../../core/validation.js'
 import ProductMark from '../../components/ProductMark.vue'
 const kind=ref('orders'),id=ref(''),doc=ref(null),inputs=ref([]),loading=ref(false),busy=ref(false),error=ref(''),remark=ref(''),returnMode=ref(false)
 const pendingKeys = new Map()

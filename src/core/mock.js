@@ -1,4 +1,5 @@
 import { assert, loginInput, linesInput, quantity, note, BusinessError, arrivalDateInput, localDate } from './validation.js'
+import { filterOrderDocuments } from './order-list.js'
 const copy = value => JSON.parse(JSON.stringify(value))
 export const DEMO_ACCOUNT = 'store001'
 export const DEMO_PASSWORD = 'Doudou123'
@@ -30,6 +31,7 @@ export function createMockTransport(storage, now = Date.now) {
   let db = storage.get('demo-db-v1') || initialState()
   // Preserve documents when upgrading previously saved demo data.
   if (!db.orderTemplates) db.orderTemplates=demoTemplates()
+  for(const order of db.orders)if(order.status==='DRAFT'&&!order.templateId){order.templateId='TPL-DAILY';order.templateName='日常补货模板'}
   const save = () => storage.set('demo-db-v1', copy(db))
   const id = prefix => `${prefix}${now()}${++db.seq}`
   function issue() {
@@ -65,9 +67,12 @@ export function createMockTransport(storage, now = Date.now) {
         assert(!action,'接口不存在',404);return summary(template)
       }
       if (kind === 'products') return db.products
-      if (kind === 'dashboard') return { pending: db.receipts.filter(x => x.status === 'PENDING').length, differences: db.differences.filter(x => x.status === 'OPEN').length, orders: db.orders.filter(x => x.status === 'SUBMITTED').length, returns: db.returns.filter(x => !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(x.status)).length }
+      if (kind === 'dashboard') return { pending: db.receipts.filter(x => x.status === 'PENDING').length, differences: db.differences.filter(x => x.status === 'OPEN').length, orders: db.orders.filter(x => ['SUBMITTED','APPROVED'].includes(x.status)).length, returns: db.returns.filter(x => !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(x.status)).length }
       assert(['orders', 'receipts', 'differences', 'returns'].includes(kind), '接口不存在', 404)
-      if (!docId) return [...db[kind]].reverse()
+      if (!docId) {
+        const documents=db[kind].filter(x=>x.storeId==='S001')
+        return filterOrderDocuments(documents,data,kind).slice().reverse()
+      }
       const doc = copy(docBy(kind, docId))
       if (kind === 'receipts' && doc.status === 'RECEIVED') doc.lines.forEach(x => { x.returnable = available(doc, x.sku) })
       return doc
@@ -99,8 +104,18 @@ export function createMockTransport(storage, now = Date.now) {
     assert(['orders', 'receipts', 'differences', 'returns'].includes(kind), '接口不存在', 404)
     const doc = docBy(kind, docId)
     assert(data.version === doc.version, '单据已更新，请重新加载后操作', 409)
+    if(kind==='orders' && action==='update') {
+      assert(doc.status==='DRAFT','已提交单据不可编辑',409)
+      assert(data.templateId===doc.templateId,'编辑时不可更换订货模板')
+      const template=db.orderTemplates.find(x=>x.id===doc.templateId&&x.storeIds.includes('S001'))
+      assert(template,'订货模板已失效，请联系业务管理员')
+      linesInput(data.lines); note(data.remark||'')
+      const arrivalDate=arrivalDateInput(data.arrivalDate,localDate(new Date(now())))
+      const lines=data.lines.map(x=>{const p=db.products.find(p=>p.sku===x.sku);assert(p&&template.skus.includes(p.sku),'商品不属于所选订货模板');assert(x.quantity>=p.min&&x.quantity%p.step===0,`${p.name}须按${p.step}${p.unit}订购，至少${p.min}${p.unit}`);return {...p,quantity:x.quantity}})
+      doc.lines=lines;doc.remark=data.remark||'';doc.arrivalDate=arrivalDate;event(doc,'修改暂存订货单');return doc
+    }
     if (action === 'cancel' && ['orders', 'returns'].includes(kind)) {
-      assert(['DRAFT', 'SUBMITTED'].includes(doc.status), '当前状态不可取消', 409); doc.status = 'CANCELLED'; event(doc, '门店取消单据'); return doc
+      assert((kind==='orders'?['DRAFT']:['DRAFT','SUBMITTED']).includes(doc.status), '当前状态不可取消', 409); doc.status = 'CANCELLED'; event(doc, '门店取消单据'); return doc
     }
     if (action === 'submit' && ['orders', 'returns'].includes(kind)) {
       assert(doc.status === 'DRAFT', '仅草稿可提交', 409)

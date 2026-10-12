@@ -9,7 +9,7 @@
       <view class="module-card entry" @tap="open('returns')"><LineIcon name="return"/><text class="module-label">退货申请</text></view>
     </view></view>
     <view class="surface-panel"><view class="panel-heading">常用数据</view><view class="data-grid">
-      <view class="data-item" @tap="open('orders')"><text class="data-number">{{stats.orders}}</text><text>订货待审核</text></view>
+      <view class="data-item" @tap="open('orders')"><text class="data-number">{{stats.orders}}</text><text>已提交订货</text></view>
       <view class="data-item" @tap="open('receipts')"><text class="data-number">{{stats.pending}}</text><text>待确认收货</text></view>
       <view class="data-item" @tap="open('differences')"><text class="data-number">{{stats.differences}}</text><text>待核对差异</text></view>
       <view class="data-item" @tap="open('returns')"><text class="data-number">{{stats.returns}}</text><text>退货处理中</text></view>

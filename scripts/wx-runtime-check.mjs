@@ -6,7 +6,7 @@ function patchData(target,patch){for(const [key,value] of Object.entries(patch))
 let app
 const context=vm.createContext({console,setTimeout,clearTimeout,setInterval,clearInterval,Promise,Date,Math,JSON,Map,Set,WeakMap,WeakSet,Reflect,Proxy,Symbol,Array,Object,Number,String,Boolean,Error,RegExp,parseInt,parseFloat,isNaN,encodeURIComponent,decodeURIComponent})
 const store=new Map()
-context.wx={getSystemInfoSync:()=>({platform:'devtools',language:'zh_CN',windowWidth:390,windowHeight:844}),getAppBaseInfo:()=>({language:'zh_CN',theme:'light'}),getDeviceInfo:()=>({platform:'devtools'}),getWindowInfo:()=>({windowWidth:390,windowHeight:844}),getStorageSync:k=>store.get(k)||'',setStorageSync:(k,v)=>store.set(k,v),removeStorageSync:k=>store.delete(k),canIUse:()=>false,nextTick:fn=>Promise.resolve().then(fn),reLaunch:()=>{},navigateTo:()=>{}}
+context.wx={getSystemInfoSync:()=>({platform:'devtools',language:'zh_CN',windowWidth:390,windowHeight:844}),getAppBaseInfo:()=>({language:'zh_CN',theme:'light'}),getDeviceInfo:()=>({platform:'devtools'}),getWindowInfo:()=>({windowWidth:390,windowHeight:844}),getStorageSync:k=>store.get(k)||'',setStorageSync:(k,v)=>store.set(k,v),removeStorageSync:k=>store.delete(k),canIUse:()=>false,nextTick:fn=>Promise.resolve().then(fn),reLaunch:()=>{},navigateTo:()=>{},setNavigationBarTitle:()=>{},stopPullDownRefresh:()=>{}}
 context.global=context;context.getApp=()=>app;context.getCurrentPages=()=>[];context.App=config=>{app=config;return config};context.Page=config=>registrations.push(config);context.Component=config=>{registrations.push(config);return config}
 function load(file){const filename=path.resolve(file);if(cache.has(filename))return cache.get(filename).exports;const module={exports:{}};cache.set(filename,module);const fn=vm.runInContext(`(function(require,module,exports){${fs.readFileSync(filename,'utf8')}\n})`,context,{filename});fn(p=>load(path.resolve(path.dirname(filename),p)),module,module.exports);return module.exports}
 load(path.join(root,'app.js'));app.onLaunch?.({})
@@ -46,3 +46,15 @@ for(const item of items)assert.equal(item[quantityKey],'0')
 const saveMethod=bound(/loading="\{\{\w+\}\}" disabled="\{\{\w+\}\}" bindtap="\{\{(\w+)\}\}"/)
 assert.equal(typeof productInstance[saveMethod],'function','Save handler must be callable')
 console.log('Compiled order product page: date, search, error, six zero quantities and save handler match WXML. No real WeChat device rendering was performed.')
+
+load(path.join(root,'pages/documents/index.js'))
+const docsConfig=registrations.at(-1),docsInstance={route:'pages/documents/index',properties:{},data:{},triggerEvent(){},selectAllComponents:()=>[],setData(data,callback){patchData(this.data,data);callback?.()}}
+Object.assign(docsInstance,docsConfig.methods)
+docsConfig.lifetimes.created?.call(docsInstance);docsConfig.lifetimes.attached.call(docsInstance);docsConfig.methods.onLoad.call(docsInstance,{kind:'orders'});docsConfig.lifetimes.ready.call(docsInstance)
+await new Promise(r=>setTimeout(r,30))
+const docsWxml=fs.readFileSync(path.join(root,'pages/documents/index.wxml'),'utf8')
+const rangesKey=docsWxml.match(/class="date-query[^>]*range="\{\{(\w+)\}\}"/)[1]
+assert.equal(docsInstance.data[rangesKey][2],'近七天')
+const statusKey=docsWxml.match(/<picker[^>]*range="\{\{(\w+)\}\}"/)[1]
+assert.deepEqual(Array.from(docsInstance.data[statusKey]),['全部状态','暂存','已提交'])
+console.log('Compiled document queries: saved/submitted status options and seven-day date default match WXML.')

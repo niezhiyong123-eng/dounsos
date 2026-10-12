@@ -1,5 +1,4 @@
 import { assert, loginInput, linesInput, quantity, note, BusinessError, arrivalDateInput, localDate } from './validation.js'
-import { filterOrderDocuments } from './order-list.js'
 const copy = value => JSON.parse(JSON.stringify(value))
 export const DEMO_ACCOUNT = 'store001'
 export const DEMO_PASSWORD = 'Doudou123'
@@ -68,7 +67,7 @@ export function createMockTransport(storage, now = Date.now) {
       if (kind === 'products') return db.products
       if (kind === 'dashboard') return { pending: db.receipts.filter(x => x.status === 'PENDING').length, differences: db.differences.filter(x => x.status === 'OPEN').length, orders: db.orders.filter(x => x.status === 'SUBMITTED').length, returns: db.returns.filter(x => !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(x.status)).length }
       assert(['orders', 'receipts', 'differences', 'returns'].includes(kind), '接口不存在', 404)
-      if (!docId) return (kind==='orders'?filterOrderDocuments(db.orders,data):[...db[kind]]).slice().reverse()
+      if (!docId) return [...db[kind]].reverse()
       const doc = copy(docBy(kind, docId))
       if (kind === 'receipts' && doc.status === 'RECEIVED') doc.lines.forEach(x => { x.returnable = available(doc, x.sku) })
       return doc

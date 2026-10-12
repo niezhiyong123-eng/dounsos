@@ -1,5 +1,6 @@
 <template><view class="page"><view class="between"><view class="title">{{ kinds[kind] }}</view><button v-if="kind === 'orders'" class="primary small" @tap="go('/pages/create/index')">＋ 新建订货</button></view>
-  <view class="list-tools"><input v-model="search" class="input grow" placeholder="搜索单号 / 商品"/><button class="status-picker" aria-label="选择单据状态" @tap="openStatus">{{filterLabels[filterIndex]}} <text>⌄</text></button></view>
+  <view v-if="kind==='orders'" class="order-status-tabs"><button :class="['status-tab',{active:status==='DRAFT'}]" aria-label="暂存订货单" @tap="switchOrderStatus('DRAFT')">暂存</button><button :class="['status-tab',{active:status==='SUBMITTED'}]" aria-label="已提交订货单" @tap="switchOrderStatus('SUBMITTED')">已提交</button></view>
+  <view class="list-tools"><input v-model="search" class="input grow" placeholder="搜索单号 / 商品"/><button v-if="kind!=='orders'" class="status-picker" aria-label="选择单据状态" @tap="openStatus">{{filterLabels[filterIndex]}} <text>⌄</text></button></view>
   <picker class="date-query" :range="dateRanges" :value="rangeIndex" @change="selectRange"><view class="date-query-row"><text>查询日期</text><view>{{dateRanges[rangeIndex]}} <text class="chevron">⌄</text></view></view></picker>
   <view v-if="kind === 'returns'" class="demo-banner">新建退货：进入“已收货”单据，从来源明细申请退货。</view>
   <view v-if="error" class="error" @tap="load">{{ error }} · 点击重试</view><view v-if="loading" class="empty">正在查询…</view>
@@ -14,10 +15,11 @@ import { labels, money, documentLabel } from '../../core/validation.js'
 import ProductMark from '../../components/ProductMark.vue'
 import {dateRanges,orderDateRange} from '../../core/order-list.js'
 const rangeIndex=ref(2)
-const kind=ref('orders'), docs=ref([]), loading=ref(false), error=ref(''), search=ref(''), status=ref('ALL'), limit=ref(10)
+const kind=ref('orders'), docs=ref([]), loading=ref(false), error=ref(''), search=ref(''), status=ref('DRAFT'), limit=ref(10)
 let loadId = 0
-const filters=computed(()=>({orders:['ALL','DRAFT','SUBMITTED'],receipts:['ALL','PENDING','RECEIVED'],differences:['ALL','OPEN','RESOLVED'],returns:['ALL','DRAFT','SUBMITTED','APPROVED','SHIPPED','COMPLETED','REJECTED','CANCELLED']}[kind.value]))
+const filters=computed(()=>({orders:['DRAFT','SUBMITTED'],receipts:['ALL','PENDING','RECEIVED'],differences:['ALL','OPEN','RESOLVED'],returns:['ALL','DRAFT','SUBMITTED','APPROVED','SHIPPED','COMPLETED','REJECTED','CANCELLED']}[kind.value]))
 const filterLabels=computed(()=>filters.value.map(s=>s==='ALL'?'全部状态':documentLabel(kind.value,s))),filterIndex=computed(()=>filters.value.indexOf(status.value))
+function switchOrderStatus(value){if(status.value===value)return;status.value=value;load()}
 function openStatus(){uni.showActionSheet({itemList:filterLabels.value,success:result=>selectStatus({detail:{value:result.tapIndex}})})}
 function selectStatus(event){status.value=filters.value[Number(event.detail.value)];limit.value=10;load()}
 const filtered=computed(()=>docs.value),visible=computed(()=>filtered.value.slice(0,limit.value))
@@ -27,6 +29,6 @@ let timer
 watch(search,()=>{++loadId;docs.value=[];loading.value=true;clearTimeout(timer);timer=setTimeout(load,300)})
 onBeforeUnmount(()=>{++loadId;clearTimeout(timer)})
 function selectRange(event){rangeIndex.value=Number(event.detail.value);load()}
-onLoad(options=>{if(kinds[options.kind])kind.value=options.kind;uni.setNavigationBarTitle({title:kinds[kind.value]})});onShow(load);onPullDownRefresh(load)
+onLoad(options=>{if(kinds[options.kind])kind.value=options.kind;status.value=kind.value==='orders'?'DRAFT':'ALL';uni.setNavigationBarTitle({title:kinds[kind.value]})});onShow(load);onPullDownRefresh(load)
 </script>
-<style scoped>.list-tools{display:flex;align-items:center;gap:16rpx;margin:28rpx 0}.list-tools .input{min-width:0}.status-picker{flex-shrink:0;min-height:48px;min-width:150rpx;display:flex;align-items:center;justify-content:center;gap:8rpx;font-weight:400;padding:20rpx 18rpx;border:1rpx solid #dfe7df;background:white;border-radius:14rpx;font-size:25rpx;color:#52725b;white-space:nowrap}.date-query{display:block;margin:-8rpx 0 24rpx}.date-query-row{display:flex;align-items:center;justify-content:space-between;padding:20rpx 24rpx;background:white;border-radius:9rpx;min-height:48px;font-size:28rpx;font-weight:600;color:#526b5c}.date-query-row .chevron{margin-left:18rpx;color:#0eab70}.doc-no{font-size:25rpx;font-weight:650;word-break:break-all}</style>
+<style scoped>.order-status-tabs{display:flex;background:white;margin-top:26rpx;border-radius:9rpx 9rpx 0 0;overflow:hidden}.status-tab{width:50%;min-height:48px;text-align:center;border-radius:0;background:white;padding:22rpx 12rpx;border-bottom:5rpx solid transparent;color:#a2aaa5;font-size:32rpx;font-weight:700}.status-tab.active{color:#0eab70;border-bottom-color:#0eab70}.list-tools{display:flex;align-items:center;gap:16rpx;margin:28rpx 0}.list-tools .input{min-width:0}.status-picker{flex-shrink:0;min-height:48px;min-width:150rpx;display:flex;align-items:center;justify-content:center;gap:8rpx;font-weight:400;padding:20rpx 18rpx;border:1rpx solid #dfe7df;background:white;border-radius:14rpx;font-size:25rpx;color:#52725b;white-space:nowrap}.date-query{display:block;margin:-8rpx 0 24rpx}.date-query-row{display:flex;align-items:center;justify-content:space-between;padding:20rpx 24rpx;background:white;border-radius:9rpx;min-height:48px;font-size:28rpx;font-weight:600;color:#526b5c}.date-query-row .chevron{margin-left:18rpx;color:#0eab70}.doc-no{font-size:25rpx;font-weight:650;word-break:break-all}</style>

@@ -55,16 +55,13 @@ await new Promise(r=>setTimeout(r,30))
 const docsWxml=fs.readFileSync(path.join(root,'pages/documents/index.wxml'),'utf8')
 const rangesKey=docsWxml.match(/class="date-query[^>]*range="\{\{(\w+)\}\}"/)[1]
 assert.equal(docsInstance.data[rangesKey][2],'近七天')
-let sheet
-context.wx.showActionSheet=options=>{sheet=options}
-const statusMethod=docsInstance.data[docsWxml.match(/aria-label="选择单据状态" bindtap="\{\{(\w+)\}\}"/)[1]]
-assert.equal(typeof docsInstance[statusMethod],'function')
-docsInstance[statusMethod]({type:'tap',timeStamp:Date.now(),target:{},currentTarget:{},detail:{}})
+const savedMethod=docsInstance.data[docsWxml.match(/aria-label="暂存订货单" bindtap="\{\{(\w+)\}\}"/)[1]]
+const submittedMethod=docsInstance.data[docsWxml.match(/aria-label="已提交订货单" bindtap="\{\{(\w+)\}\}"/)[1]]
+assert.equal(typeof docsInstance[savedMethod],'function')
+assert.equal(typeof docsInstance[submittedMethod],'function')
+docsInstance[submittedMethod]({type:'tap',timeStamp:Date.now(),target:{},currentTarget:{},detail:{}})
 await new Promise(r=>setTimeout(r,30))
-assert.deepEqual(Array.from(sheet.itemList),['全部状态','暂存','已提交'])
-sheet.success({tapIndex:1})
-await new Promise(r=>setTimeout(r,30))
-console.log('Compiled document status button opens native action sheet and applies saved-order selection; date defaults to seven days.')
+console.log('Compiled order status tabs are callable and submitted-tab selection runs successfully; date defaults to seven days.')
 
 const detailWxml=fs.readFileSync(path.join(root,'pages/detail/index.wxml'),'utf8')
 assert.equal(detailWxml.includes('操作记录'),false)

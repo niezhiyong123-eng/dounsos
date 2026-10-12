@@ -35,4 +35,4 @@ export function arrivalDateInput(value, today = localDate()) {
 }
 export const money = cents => (Number(cents || 0) / 100).toFixed(2)
 export const labels = { DRAFT: '草稿', SUBMITTED: '待审核', APPROVED: '已审核', CANCELLED: '已取消', PENDING: '待收货', RECEIVED: '已收货', OPEN: '待核对', RESOLVED: '已核对', REJECTED: '已驳回', SHIPPED: '退货在途', COMPLETED: '已完成' }
-export const documentLabel = (kind, status) => kind==='orders' ? ({DRAFT:'暂存',SUBMITTED:'已提交',APPROVED:'已提交'}[status]||labels[status]) : labels[status]
+export const documentLabel = (kind, status) => ({orders:{DRAFT:'暂存',SUBMITTED:'已提交',APPROVED:'已提交'},receipts:{PENDING:'待验收',RECEIVED:'已验收'},differences:{OPEN:'待审核',RESOLVED:'已审核'}}[kind]?.[status]||labels[status])

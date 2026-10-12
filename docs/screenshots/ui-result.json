@@ -10,6 +10,7 @@
     "saved/submitted tabs without all status, preserved date, four widths, and draft deletion survives reload",
     "receipt shortage",
     "difference resolution",
+    "receipt and difference two status tabs filter pending and completed records",
     "return create submit approve ship complete",
     "template product scope and drafts isolated and restored after reload",
     "profile store details and logout"

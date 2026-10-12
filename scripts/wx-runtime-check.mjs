@@ -67,3 +67,13 @@ const detailWxml=fs.readFileSync(path.join(root,'pages/detail/index.wxml'),'utf8
 assert.equal(detailWxml.includes('操作记录'),false)
 assert.ok(detailWxml.includes('删除单据'))
 console.log('Compiled detail page hides operation history and includes the draft delete action.')
+
+for(const [kind,first,second] of [['receipts','待验收收货单','已验收收货单'],['differences','待审核差异单','已审核差异单']]){
+  const instance={route:'pages/documents/index',properties:{},data:{},triggerEvent(){},selectAllComponents:()=>[],setData(data,callback){patchData(this.data,data);callback?.()}}
+  Object.assign(instance,docsConfig.methods)
+  docsConfig.lifetimes.created?.call(instance);docsConfig.lifetimes.attached.call(instance);docsConfig.methods.onLoad.call(instance,{kind});docsConfig.lifetimes.ready.call(instance)
+  await new Promise(r=>setTimeout(r,30))
+  for(const label of [first,second]){const key=docsWxml.match(new RegExp('aria-label="'+label+'" bindtap="\\{\\{(\\w+)\\}\\}"'))[1];assert.equal(typeof instance[instance.data[key]],'function');if(label===second)instance[instance.data[key]]({type:'tap',timeStamp:Date.now(),target:{},currentTarget:{},detail:{}})}
+  await new Promise(r=>setTimeout(r,30))
+}
+console.log('Compiled receipt and difference status tabs are callable and completed-state clicks run successfully.')

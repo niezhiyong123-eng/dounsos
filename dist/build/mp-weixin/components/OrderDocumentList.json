@@ -1,0 +1,7 @@
+{
+  "component": true,
+  "usingComponents": {
+    "line-icon": "./LineIcon",
+    "product-mark": "./ProductMark"
+  }
+}

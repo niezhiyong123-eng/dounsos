@@ -14,7 +14,7 @@ function remote({ path, method, data, headers }) {
 export const client = createClient({ transport: isDemo ? createMockTransport(storage) : remote, storage, onExpired: () => uni.reLaunch({ url: '/pages/login/index' }) })
 export const api = {
   login: input => client.login(loginInput(input)),
-  get: path => client.request(path),
+  get: (path, data) => client.request(path, { data }),
   post: (path, data, key) => client.request(path, { method: 'POST', data, key }),
   logout: () => client.logout()
 }

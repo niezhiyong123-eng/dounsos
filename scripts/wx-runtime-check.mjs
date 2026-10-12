@@ -6,7 +6,7 @@ function patchData(target,patch){for(const [key,value] of Object.entries(patch))
 let app
 const context=vm.createContext({console,setTimeout,clearTimeout,setInterval,clearInterval,Promise,Date,Math,JSON,Map,Set,WeakMap,WeakSet,Reflect,Proxy,Symbol,Array,Object,Number,String,Boolean,Error,RegExp,parseInt,parseFloat,isNaN,encodeURIComponent,decodeURIComponent})
 const store=new Map()
-context.wx={getSystemInfoSync:()=>({platform:'devtools',language:'zh_CN',windowWidth:390,windowHeight:844}),getAppBaseInfo:()=>({language:'zh_CN',theme:'light'}),getDeviceInfo:()=>({platform:'devtools'}),getWindowInfo:()=>({windowWidth:390,windowHeight:844}),getStorageSync:k=>store.get(k)||'',setStorageSync:(k,v)=>store.set(k,v),removeStorageSync:k=>store.delete(k),canIUse:()=>false,nextTick:fn=>Promise.resolve().then(fn),reLaunch:()=>{},navigateTo:()=>{}}
+context.wx={getSystemInfoSync:()=>({platform:'devtools',language:'zh_CN',windowWidth:390,windowHeight:844}),getAppBaseInfo:()=>({language:'zh_CN',theme:'light'}),getDeviceInfo:()=>({platform:'devtools'}),getWindowInfo:()=>({windowWidth:390,windowHeight:844}),getStorageSync:k=>store.get(k)||'',setStorageSync:(k,v)=>store.set(k,v),removeStorageSync:k=>store.delete(k),canIUse:()=>false,nextTick:fn=>Promise.resolve().then(fn),reLaunch:()=>{},navigateTo:()=>{},stopPullDownRefresh:()=>{}}
 context.global=context;context.getApp=()=>app;context.getCurrentPages=()=>[];context.App=config=>{app=config;return config};context.Page=config=>registrations.push(config);context.Component=config=>{registrations.push(config);return config}
 function load(file){const filename=path.resolve(file);if(cache.has(filename))return cache.get(filename).exports;const module={exports:{}};cache.set(filename,module);const fn=vm.runInContext(`(function(require,module,exports){${fs.readFileSync(filename,'utf8')}\n})`,context,{filename});fn(p=>load(path.resolve(path.dirname(filename),p)),module,module.exports);return module.exports}
 load(path.join(root,'app.js'));app.onLaunch?.({})
@@ -46,3 +46,20 @@ for(const item of items)assert.equal(item[quantityKey],'0')
 const saveMethod=bound(/loading="\{\{\w+\}\}" disabled="\{\{\w+\}\}" bindtap="\{\{(\w+)\}\}"/)
 assert.equal(typeof productInstance[saveMethod],'function','Save handler must be callable')
 console.log('Compiled order product page: date, search, error, six zero quantities and save handler match WXML. No real WeChat device rendering was performed.')
+
+load(path.join(root,'components/OrderDocumentList.js'))
+const listConfig=registrations.at(-1),listInstance={properties:{},data:{},triggerEvent(){},selectAllComponents:()=>[],setData(data,callback){patchData(this.data,data);callback?.()}}
+Object.assign(listInstance,listConfig.methods)
+listConfig.lifetimes.created?.call(listInstance)
+listConfig.lifetimes.attached.call(listInstance)
+listConfig.lifetimes.ready?.call(listInstance)
+await new Promise(r=>setTimeout(r,80))
+const listWxml=fs.readFileSync(path.join(root,'components/OrderDocumentList.wxml'),'utf8')
+for(const label of ['暂存','已提交','筛选订货单','日期范围','订货模板'])assert.ok(listWxml.includes(label))
+const filterMethod=listInstance.data[listWxml.match(/aria-label="筛选订货单" bindtap="\{\{(\w+)\}\}"/)[1]]
+assert.equal(typeof listInstance[filterMethod],'function')
+listInstance[filterMethod]({type:'tap',timeStamp:Date.now(),target:{},currentTarget:{},detail:{}})
+await new Promise(r=>setTimeout(r,30))
+const dateBinding=listWxml.match(/日期范围<\/text><view[^>]*>\{\{(\w+)\}\}/)[1]
+assert.equal(listInstance.data[dateBinding],'近七天')
+console.log('Compiled order list: two status groups and filter event with seven-day default match WXML.')

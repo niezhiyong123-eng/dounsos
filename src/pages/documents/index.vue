@@ -1,4 +1,4 @@
-<template><view class="page"><view class="between"><view class="title">{{ kinds[kind] }}</view><button v-if="kind === 'orders'" class="primary small" @tap="go('/pages/create/index')">＋ 新建订货</button></view>
+<template><OrderDocumentList v-if="kind==='orders'" ref="orderList"/><view v-else class="page"><view class="between"><view class="title">{{ kinds[kind] }}</view><button v-if="kind === 'orders'" class="primary small" @tap="go('/pages/create/index')">＋ 新建订货</button></view>
   <view class="list-tools"><input v-model="search" class="input grow" placeholder="搜索单号 / 商品"/><picker :range="filterLabels" :value="filterIndex" @change="selectStatus"><view class="status-picker">{{ filterLabels[filterIndex] }}⌄</view></picker></view>
   <view v-if="kind === 'returns'" class="demo-banner">新建退货：进入“已收货”单据，从来源明细申请退货。</view>
   <view v-if="error" class="error" @tap="load">{{ error }} · 点击重试</view><view v-if="loading" class="empty">正在查询…</view>
@@ -11,6 +11,8 @@ import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { api, guard, go, kinds, dateText } from '../../services/api.js'
 import { labels, money } from '../../core/validation.js'
 import ProductMark from '../../components/ProductMark.vue'
+import OrderDocumentList from '../../components/OrderDocumentList.vue'
+const orderList=ref(null)
 const kind=ref('orders'), docs=ref([]), loading=ref(false), error=ref(''), search=ref(''), status=ref('ALL'), limit=ref(10)
 let loadId = 0
 const filters=computed(()=>({orders:['ALL','DRAFT','SUBMITTED','APPROVED','CANCELLED'],receipts:['ALL','PENDING','RECEIVED'],differences:['ALL','OPEN','RESOLVED'],returns:['ALL','DRAFT','SUBMITTED','APPROVED','SHIPPED','COMPLETED','REJECTED','CANCELLED']}[kind.value]))
@@ -18,7 +20,7 @@ const filterLabels=computed(()=>filters.value.map(s=>s==='ALL'?'全部状态':la
 function selectStatus(event){status.value=filters.value[Number(event.detail.value)];limit.value=10}
 const filtered=computed(()=>docs.value.filter(x=>(status.value==='ALL'||x.status===status.value)&&(!search.value||`${x.id} ${x.lines.map(y=>y.name).join(' ')}`.includes(search.value.trim())))),visible=computed(()=>filtered.value.slice(0,limit.value))
 const total=doc=>doc.lines.reduce((sum,x)=>sum+x.price*x.quantity,0)
-async function load(){if(!guard())return;const ticket=++loadId;loading.value=true;error.value='';try{const result=await api.get(`/${kind.value}`);if(ticket===loadId)docs.value=result}catch(e){if(ticket===loadId)error.value=e.message}finally{if(ticket===loadId)loading.value=false;uni.stopPullDownRefresh()}}
+async function load(){if(kind.value==='orders'){orderList.value?.load();return}if(!guard())return;const ticket=++loadId;loading.value=true;error.value='';try{const result=await api.get(`/${kind.value}`);if(ticket===loadId)docs.value=result}catch(e){if(ticket===loadId)error.value=e.message}finally{if(ticket===loadId)loading.value=false;uni.stopPullDownRefresh()}}
 onLoad(options=>{if(kinds[options.kind])kind.value=options.kind;uni.setNavigationBarTitle({title:kinds[kind.value]})});onShow(load);onPullDownRefresh(load)
 </script>
 <style scoped>.list-tools{display:flex;align-items:center;gap:16rpx;margin:28rpx 0}.list-tools .input{min-width:0}.status-picker{padding:24rpx 18rpx;border:1rpx solid #dfe7df;background:white;border-radius:14rpx;font-size:25rpx;color:#52725b;white-space:nowrap}.doc-no{font-size:25rpx;font-weight:650;word-break:break-all}</style>

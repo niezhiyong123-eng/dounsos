@@ -14,10 +14,11 @@
     <view class="card"><view class="between"><text class="muted">{{kind==='differences'?'来源明细金额（非索赔金额）':'单据参考金额'}}</text><text class="price">¥{{money(total)}}</text></view></view>
     <view v-if="needsRemark" class="card"><text class="field-label">{{remarkLabel}}</text><textarea v-model="remark" class="textarea" maxlength="200" :disabled="busy" :placeholder="remarkPlaceholder"/><text class="hint">{{remark.length}} / 200</text></view>
     <view v-if="doc.resolution||doc.shipping" class="card"><text class="field-label">处理记录</text><text>{{doc.resolution||doc.shipping}}</text></view>
-    <view class="section-title">操作记录</view><view class="card"><view v-for="(entry,index) in doc.history" :key="index" class="history"><text>{{entry.text}}</text><text class="muted">{{dateText(entry.at)}}</text></view></view>
+
     <view v-if="isDemo&&!returnMode&&((['orders','returns'].includes(kind)&&doc.status==='SUBMITTED')||(kind==='returns'&&doc.status==='SHIPPED'))" class="demo-panel"><view class="product-name">演示流程控制</view><text class="hint">用于体验后续步骤；正式模式不显示，真实审批由 CMP5 完成。</text><view class="row" style="margin-top:20rpx"><button v-if="doc.status==='SUBMITTED'" class="secondary small" :disabled="busy" @tap="act('demo-approve','模拟 CMP 审核通过？订货单将生成待收货配送单。')">模拟审核通过</button><button v-if="kind==='returns'&&doc.status==='SUBMITTED'" class="secondary small" :disabled="busy" @tap="act('demo-reject','模拟 CMP 驳回退货申请？')">模拟驳回</button><button v-if="doc.status==='SHIPPED'" class="secondary small" :disabled="busy" @tap="act('demo-complete','模拟配送中心确认收到退货？')">模拟退货接收</button></view></view>
     <view class="action-bar" v-if="hasActions"><view class="row">
-      <button v-if="(kind==='orders'&&doc.status==='DRAFT')||(kind==='returns'&&['DRAFT','SUBMITTED'].includes(doc.status))" class="secondary" :disabled="busy" @tap="act('cancel','确认取消此单据？取消后不可恢复。')">取消单据</button>
+      <button v-if="kind==='orders'&&doc.status==='DRAFT'" class="danger" :disabled="busy" @tap="deleteOrder">删除单据</button>
+      <button v-if="kind==='returns'&&['DRAFT','SUBMITTED'].includes(doc.status)" class="secondary" :disabled="busy" @tap="act('cancel','确认取消此单据？取消后不可恢复。')">取消单据</button>
       <button v-if="kind==='orders'&&doc.status==='DRAFT'" class="secondary" :disabled="busy" @tap="go(`/pages/order-products/index?id=${encodeURIComponent(doc.id)}`)">编辑单据</button>
       <button v-if="['orders','returns'].includes(kind)&&doc.status==='DRAFT'" class="primary" :loading="busy" :disabled="busy" @tap="act('submit',kind==='orders'?'确认提交？提交后不可编辑。':'核对商品和数量后，提交审核？')">{{kind==='orders'?'提交单据':'提交审核'}}</button>
       <button v-if="kind==='receipts'&&doc.status==='PENDING'" class="primary" :loading="busy" :disabled="busy" @tap="receive">确认收货</button>
@@ -31,7 +32,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { api, guard, go, kinds, dateText, isDemo, report, confirm, newKey } from '../../services/api.js'
+import { api, guard, go, client, storage, kinds, dateText, isDemo, report, confirm, newKey } from '../../services/api.js'
 import { labels, documentLabel, money, quantity, assert, note, linesInput } from '../../core/validation.js'
 import ProductMark from '../../components/ProductMark.vue'
 const kind=ref('orders'),id=ref(''),doc=ref(null),inputs=ref([]),loading=ref(false),busy=ref(false),error=ref(''),remark=ref(''),returnMode=ref(false)
@@ -47,6 +48,7 @@ onLoad(options=>{if(!kinds[options.kind]||!options.id){error.value='单据参数
 const shortage=index=>Math.max(0,doc.value.lines[index].quantity-(Number(inputs.value[index]?.received)||0)-(Number(inputs.value[index]?.damaged)||0))
 async function post(path,payload){const fingerprint=JSON.stringify({path,payload});if(!pendingKeys.has(fingerprint))pendingKeys.set(fingerprint,newKey());const result=await api.post(path,payload,pendingKeys.get(fingerprint));pendingKeys.delete(fingerprint);return result}
 async function act(action,message,extra={}){if(busy.value)return;busy.value=true;try{if(!await confirm(message))return;const result=await post(`/${kind.value}/${id.value}/${action}`,{version:doc.value.version,...extra});setDoc(result);remark.value='';uni.showToast({title:'操作成功',icon:'success'});if(kind.value==='receipts')await load()}catch(e){report(e);if(e.status===409)await load()}finally{busy.value=false}}
+async function deleteOrder(){if(busy.value)return;busy.value=true;try{if(!await confirm('确认永久删除此暂存订货单？删除后无法恢复。','删除单据'))return;await post('/orders/'+id.value+'/delete',{version:doc.value.version});const key='order-draft:'+client.getSession()?.user.storeId;const drafts=storage.get(key);if(drafts?.edits){delete drafts.edits[id.value];storage.set(key,drafts)}uni.redirectTo({url:'/pages/documents/index?kind=orders'});uni.showToast({title:'已删除',icon:'success'})}catch(e){report(e);if(e.status===409)await load()}finally{busy.value=false}}
 function receive(){try{const lines=inputs.value.map((x,index)=>{const received=quantity(x.received,'合格数量',true),damaged=quantity(x.damaged,'破损数量',true);assert(received+damaged<=doc.value.lines[index].quantity,`${doc.value.lines[index].name}不可超收`);return {sku:x.sku,received,damaged}});const hasDifference=lines.some((x,i)=>x.damaged||x.received!==doc.value.lines[i].quantity);note(remark.value,hasDifference);act('receive',hasDifference?'存在收货差异，将生成差异单。确认合格数量入账？':'确认本单全部商品已核对并收货？',{lines,remark:remark.value})}catch(e){report(e)}}
 function resolve(){try{note(remark.value,true);act('resolve','确认登记核对意见？演示核对不会自动调整库存。',{remark:remark.value})}catch(e){report(e)}}
 function ship(){try{note(remark.value,true);act('ship','确认退货实物已交接并出库？',{remark:remark.value})}catch(e){report(e)}}

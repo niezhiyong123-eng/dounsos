@@ -65,3 +65,8 @@ assert.deepEqual(Array.from(sheet.itemList),['全部状态','暂存','已提交'
 sheet.success({tapIndex:1})
 await new Promise(r=>setTimeout(r,30))
 console.log('Compiled document status button opens native action sheet and applies saved-order selection; date defaults to seven days.')
+
+const detailWxml=fs.readFileSync(path.join(root,'pages/detail/index.wxml'),'utf8')
+assert.equal(detailWxml.includes('操作记录'),false)
+assert.ok(detailWxml.includes('删除单据'))
+console.log('Compiled detail page hides operation history and includes the draft delete action.')

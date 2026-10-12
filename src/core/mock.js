@@ -114,6 +114,12 @@ export function createMockTransport(storage, now = Date.now) {
     assert(['orders', 'receipts', 'differences', 'returns'].includes(kind), '接口不存在', 404)
     const doc = docBy(kind, docId)
     assert(data.version === doc.version, '单据已更新，请重新加载后操作', 409)
+    if(kind==='orders'&&action==='delete') {
+      assert(doc.status==='DRAFT','仅暂存订货单可删除',409)
+      assert(!db.receipts.some(x=>x.sourceId===doc.id)&&!db.returns.some(x=>x.sourceId===doc.id),'存在关联业务单据，不可删除',409)
+      db.orders.splice(db.orders.findIndex(x=>x.id===doc.id),1)
+      return {id:doc.id,deleted:true}
+    }
     if(kind==='orders' && action==='update') {
       assert(doc.status==='DRAFT','已提交单据不可编辑',409)
       assert(data.templateId===doc.templateId,'编辑时不可更换订货模板')

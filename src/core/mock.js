@@ -3,6 +3,11 @@ import { filterOrderDocuments } from './order-list.js'
 const copy = value => JSON.parse(JSON.stringify(value))
 export const DEMO_ACCOUNT = 'store001'
 export const DEMO_PASSWORD = 'Doudou123'
+const DEMO_DRAFT_ID='DHDEMO20261012001'
+function demoDraft(products, time=Date.now()) {
+  const stamp=new Date(time).toISOString(),arrival=new Date(time);arrival.setDate(arrival.getDate()+1)
+  return {id:DEMO_DRAFT_ID,status:'DRAFT',storeId:'S001',version:1,createdAt:stamp,templateId:'TPL-DAILY',templateName:'日常补货模板',arrivalDate:localDate(arrival),remark:'【演示】暂存订货单，可进入详情编辑',lines:[{...products.find(p=>p.sku==='DD1001'),quantity:2},{...products.find(p=>p.sku==='DD1003'),quantity:4}],history:[{text:'【演示】创建暂存单',at:stamp}]}
+}
 const demoTemplates = () => [
   {id:'TPL-DAILY',name:'日常补货模板',description:'门店常用商品，适合日常综合补货',storeIds:['S001'],skus:['DD1001','DD1002','DD1003','DD1004','DD1005','DD1006']},
   {id:'TPL-DRINK',name:'乳品饮料模板',description:'牛奶、酸奶及饮用水专项订货',storeIds:['S001'],skus:['DD1001','DD1002','DD1003']},
@@ -19,8 +24,8 @@ export function initialState() {
   ]
   const line = (i, n, received) => ({ ...products[i], quantity: n, ...(received !== undefined ? { received, damaged: 0 } : {}) })
   const stamp = new Date().toISOString()
-  return { seq: 100, sessions: {}, failures: 0, lockedUntil: 0, idempotency: {}, products, orderTemplates:demoTemplates(),
-    orders: [{ id: 'DH20261008001', status: 'SUBMITTED', storeId: 'S001', version: 1, createdAt: stamp, remark: '日常补货', lines: [line(0, 4), line(2, 6)], history: [{ text: '门店提交订货', at: stamp }] }],
+  return { seq: 100, sessions: {}, failures: 0, lockedUntil: 0, idempotency: {}, products, orderTemplates:demoTemplates(),demoSeeds:{savedOrderV1:true},
+    orders: [{ id: 'DH20261008001', status: 'SUBMITTED', storeId: 'S001', version: 1, createdAt: stamp, remark: '日常补货', lines: [line(0, 4), line(2, 6)], history: [{ text: '门店提交订货', at: stamp }] },demoDraft(products)],
     receipts: [
       { id: 'SH20261009001', sourceId: 'DH20261007001', status: 'PENDING', storeId: 'S001', version: 1, createdAt: stamp, remark: '华东配送中心 · 常温配送', lines: [line(0, 5), line(2, 8), line(4, 12)], history: [{ text: '配送中心已发货', at: stamp }] },
       { id: 'SH20261008002', sourceId: 'DH20261006002', status: 'RECEIVED', storeId: 'S001', version: 2, createdAt: stamp, remark: '已完成收货，可申请退货', lines: [line(1, 6, 6), line(3, 20, 20), line(5, 10, 10)], history: [{ text: '门店已确认收货', at: stamp }] }
@@ -32,6 +37,11 @@ export function createMockTransport(storage, now = Date.now) {
   // Preserve documents when upgrading previously saved demo data.
   if (!db.orderTemplates) db.orderTemplates=demoTemplates()
   for(const order of db.orders)if(order.status==='DRAFT'&&!order.templateId){order.templateId='TPL-DAILY';order.templateName='日常补货模板'}
+  if(!db.demoSeeds?.savedOrderV1){
+    if(!db.orders.some(doc=>doc.id===DEMO_DRAFT_ID))db.orders.push(demoDraft(db.products,now()))
+    db.demoSeeds={...db.demoSeeds,savedOrderV1:true}
+    storage.set('demo-db-v1',copy(db))
+  }
   const save = () => storage.set('demo-db-v1', copy(db))
   const id = prefix => `${prefix}${now()}${++db.seq}`
   function issue() {
